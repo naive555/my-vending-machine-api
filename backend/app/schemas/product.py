@@ -8,7 +8,7 @@ class ProductBase(BaseModel):
 class ProductCreate(ProductBase):
     pass
 
-class Product(ProductBase):
+class ProductRead(ProductBase):
     id: int
 
     model_config = {

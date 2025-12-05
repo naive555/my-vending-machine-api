@@ -21,8 +21,8 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: 123456
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: vending
     ports:
       - "5432:5432"
