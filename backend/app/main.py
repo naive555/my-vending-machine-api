@@ -7,13 +7,16 @@ app = FastAPI(title="Vending Machine API")
 
 app.include_router(api_router, prefix="/api/v1")
 
+
 @app.get("/")
 def root():
     return {"message": "Vending Machine Backend Running"}
 
+
 @app.get("/health")
 def health_check():
     from app.core.database import engine
+
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))

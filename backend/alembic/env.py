@@ -9,11 +9,11 @@ from dotenv import load_dotenv
 # -------------------------
 # Fix Python path
 # -------------------------
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, BASE_DIR)
 
 from app.core.database import Base
-from app.models import product, product_stock, cash
+from app.models import product, product_stock, cash_stock
 
 # -------------------------
 # Alembic Config
@@ -37,6 +37,7 @@ if config.config_file_name:
 # Metadata used for autogenerate
 target_metadata = Base.metadata
 
+
 def run_migrations_offline():
     context.configure(
         url=DATABASE_URL,
@@ -47,6 +48,7 @@ def run_migrations_offline():
 
     with context.begin_transaction():
         context.run_migrations()
+
 
 def run_migrations_online():
     # engine_from_config requires a **dict[str, Any]**, so force it
