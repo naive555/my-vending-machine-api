@@ -14,6 +14,7 @@ __pycache__/
 .venv/
 .env
 .env.*
+!.env.docker
 
 # Cache / tooling
 .pytest_cache/

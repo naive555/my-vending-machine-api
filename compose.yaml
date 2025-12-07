@@ -11,7 +11,9 @@ services:
       db:
         condition: service_healthy
     env_file:
-      - backend/.env
+      - backend/.env.docker
+    networks:
+      - vm-net
 
   db:
     container_name: vending_db
@@ -31,6 +33,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - vm-net
 
 volumes:
   db-data:
+
+networks:
+  vm-net:
+    driver: bridge
