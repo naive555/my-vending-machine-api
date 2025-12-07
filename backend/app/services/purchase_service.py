@@ -6,7 +6,7 @@ from app.models.cash_stock import CashStock
 from sqlalchemy.exc import SQLAlchemyError
 
 
-# helper: transform payment list -> total and a dict of counts
+# transform payment list -> total and a dict of counts
 def payment_to_counts(payment: List[dict]) -> Tuple[int, Dict[int, int]]:
     total = 0
     counts: Dict[int, int] = {}
@@ -22,26 +22,24 @@ def payment_to_counts(payment: List[dict]) -> Tuple[int, Dict[int, int]]:
     return total, counts
 
 
-# bounded DP to find one way to make `change` using available `stock` (denom->count)
-# returns dict denom->count or None if impossible
+# bounded DP to find one way to make `change` using available `stock` (denom -> count)
+# returns dict denom -> count or None if impossible
 def make_change_bounded(change: int, stock: Dict[int, int]) -> Optional[Dict[int, int]]:
     if change == 0:
         return {}
 
-    # Get sorted denominations descending for nicer solutions
     denoms = sorted(stock.keys(), reverse=True)
 
-    # dp[value] = dict of denom->count to make value (first found)
+    # dp[value] = dict of denom -> count to make value (first found)
     dp: List[Optional[Dict[int, int]]] = [None] * (change + 1)
     dp[0] = {}
     for denom in denoms:
-        c = stock.get(denom, 0)
-        if c <= 0:
+        count = stock.get(denom, 0)
+        if count <= 0:
             continue
 
         # apply bounded count using optimized loop: for k from 1..c
-        for _ in range(c):
-            # iterate backwards
+        for _ in range(count):
             for v in range(change, -1, -1):
                 prev = dp[v]
                 if prev is not None and v + denom <= change and dp[v + denom] is None:
@@ -58,13 +56,13 @@ def make_change_bounded(change: int, stock: Dict[int, int]) -> Optional[Dict[int
 # main service function
 def purchase_product(db: Session, product_id: int, payment_list: List[dict]) -> dict:
     """
-    Attempt to purchase product_id with payment_list (dicts with denomination,count).
+    Purchase product with product_id and payment_list(dicts with denomination,count).
     Returns dict with keys: success(bool), message, price, paid, change(dict), remaining_stock
     """
     try:
         total_paid, payment_counts = payment_to_counts(payment_list)
 
-        # load product and stock FOR UPDATE (lock) - SQLAlchemy ORM locking varies per DB.
+        # get product
         product = (
             db.query(Product)
             .filter(Product.id == product_id)
@@ -117,7 +115,6 @@ def purchase_product(db: Session, product_id: int, payment_list: List[dict]) -> 
                 "message": "Cannot provide change with current cash stock",
             }
 
-        # All good — apply DB updates atomically
         # Use transaction
         # decrement product stock
         new_stock_qty = stock_qty - 1
@@ -140,14 +137,12 @@ def purchase_product(db: Session, product_id: int, payment_list: List[dict]) -> 
         for denom, count in change_map.items():
             row = next((r for r in cash_rows if r.denomination == denom), None)
             if not row or row.quantity < count:
-                # should not happen because make_change used cash_map, but safety check
                 raise RuntimeError("Inconsistent cash stock while applying change")
             row.quantity -= count
 
-        # commit done by caller (or do it here)
+        # commit done
         db.flush()
 
-        # prepare response
         change_list = [
             {"denomination": denom, "count": count}
             for denom, count in change_map.items()
