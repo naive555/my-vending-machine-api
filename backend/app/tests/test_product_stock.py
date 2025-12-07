@@ -38,6 +38,27 @@ def test_list_product_stock(client, db):
     assert {d["product_id"] for d in data} == {p1.id, p2.id}
 
 
+# TEST: Get one
+def test_get_product_stock(client, db):
+
+    p = create_product(db, "Tea", 15)
+    ps = create_stock(db, p.id, 5)
+
+    res = client.get(f"/api/v1/product-stock/{p.id}")
+    assert res.status_code == 200
+
+    data = res.json()
+    assert data["id"] == ps.id
+    assert data["product_id"] == ps.product_id
+    assert data["quantity"] == ps.quantity
+
+
+def test_get_product_stock_not_found(client, db):
+    res = client.get("/api/v1/product-stock/9999")
+    assert res.status_code == 404
+    assert res.json()["detail"] == "Product stock not found"
+
+
 # TEST: Create
 def test_create_product_stock(client, db):
     p = create_product(db, "Snack", 25)

@@ -12,6 +12,15 @@ from app.schemas.product_stock import (
 router = APIRouter()
 
 
+@router.get("/{product_id}", response_model=ProductStockRead)
+def get_product_stock(product_id: int, db: Session = Depends(get_db)):
+    stock = db.query(ProductStock).filter_by(product_id=product_id).first()
+    if not stock:
+        raise HTTPException(404, "Product stock not found")
+
+    return stock
+
+
 @router.get("/", response_model=list[ProductStockRead])
 def list_product_stock(db: Session = Depends(get_db)):
     return db.query(ProductStock).all()
