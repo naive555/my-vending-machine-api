@@ -6,8 +6,15 @@ from app.models.cash_stock import CashStock
 from sqlalchemy.exc import SQLAlchemyError
 
 
-# transform payment list -> total and a dict of counts
+# transform payment list -> total and a dict of counts e.g.
+# input: [{"denomination": 20, "count": 2}, {"denomination": 10, "count": 1}]
+# output: [50, {20: 2, 10: 1}]
 def payment_to_counts(payment: List[dict]) -> Tuple[int, Dict[int, int]]:
+    """
+    Transform payment list -> total and a dict of counts e.g.
+    input: [{"denomination": 20, "count": 2}, {"denomination": 10, "count": 1}]
+    output: [50, {20: 2, 10: 1}].
+    """
     total = 0
     counts: Dict[int, int] = {}
     for pm in payment:
@@ -22,9 +29,14 @@ def payment_to_counts(payment: List[dict]) -> Tuple[int, Dict[int, int]]:
     return total, counts
 
 
-# bounded DP to find one way to make `change` using available `stock` (denom -> count)
+# To find one way to make "change" using available "stock"
 # returns dict denom -> count or None if impossible
 def make_change_bounded(change: int, stock: Dict[int, int]) -> Optional[Dict[int, int]]:
+    """
+    To find one way to make "change" using available "stock" e.g.
+    input: change = 30, stock = {20: 1, 10: 2}
+    output: ({20: 1, 10: 1} or None)
+    """
     if change == 0:
         return {}
 
@@ -56,7 +68,7 @@ def make_change_bounded(change: int, stock: Dict[int, int]) -> Optional[Dict[int
 # main service function
 def purchase_product(db: Session, product_id: int, payment_list: List[dict]) -> dict:
     """
-    Purchase product with product_id and payment_list(dicts with denomination,count).
+    Purchase product with product_id and payment_list e.g. [{"denomination": 20, "count": 2}, {"denomination": 10, "count": 1}].
     Returns dict with keys: success(bool), message, price, paid, change(dict), remaining_stock
     """
     try:
@@ -86,7 +98,6 @@ def purchase_product(db: Session, product_id: int, payment_list: List[dict]) -> 
             return {"success": False, "message": "Out of stock"}
 
         price = int(product.price)
-
         if total_paid < price:
             return {
                 "success": False,
@@ -97,7 +108,6 @@ def purchase_product(db: Session, product_id: int, payment_list: List[dict]) -> 
 
         change_needed = total_paid - price
 
-        # build current cash stock map including the inserted payment (machine receives them first)
         cash_rows = db.query(CashStock).with_for_update().all()
         cash_map: Dict[int, int] = {
             cash.denomination: cash.quantity for cash in cash_rows
@@ -107,7 +117,7 @@ def purchase_product(db: Session, product_id: int, payment_list: List[dict]) -> 
         for denom, count in payment_counts.items():
             cash_map[denom] = cash_map.get(denom, 0) + count
 
-        # attempt to make change using cash_map
+        # make change_map using cash_map
         change_map = make_change_bounded(change_needed, cash_map)
         if change_map is None:
             return {
@@ -115,20 +125,17 @@ def purchase_product(db: Session, product_id: int, payment_list: List[dict]) -> 
                 "message": "Cannot provide change with current cash stock",
             }
 
-        # Use transaction
         # decrement product stock
         new_stock_qty = stock_qty - 1
         pstock.quantity = new_stock_qty
         db.add(pstock)
 
-        # update cash stock: add payment, then subtract change
-        # add payment_counts already reflected in cash_map, need to persist final cash_map - subtract change_map
+        # add or update cash stock from payment
         for denom, count in payment_counts.items():
             row = next((r for r in cash_rows if r.denomination == denom), None)
             if row:
                 row.quantity += count
             else:
-                # create new CashStock
                 row = CashStock(denomination=denom, quantity=count)
                 db.add(row)
                 cash_rows.append(row)
