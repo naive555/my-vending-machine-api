@@ -7,7 +7,7 @@ app = FastAPI(title="Vending Machine API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Add your domains here
+    allow_origins=["*"],  # Add your domains here
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
